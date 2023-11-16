@@ -3,7 +3,7 @@ import './App.css'
 import { useEffect, useState } from 'react';
 
 function App() {
-  const drumpad = [
+  const drumPad = [
     {
       key: 1,
       text: 'Q',
@@ -69,47 +69,99 @@ function App() {
     },  
   ]
 
-  const [name, setName] = useState('');
+  const [name, setName] = useState('Kick-\'n-hat');
   const [hoveredDrum, setHoveredDrum] = useState(null);
+  const [activeDrum, setActiveDrum] = useState(null);
+  const [volume, setVolume] = useState(25); // Initial volume set to 50
+  const [padEnabled, setPadEnabled] = useState(true); // State to control the pad's functionality
 
   useEffect(() => {
-    document.addEventListener('keydown', (event) => {
-      playSound(event.key.toUpperCase())
-    })
-  
-  }, [])
+    const handleKeyDown = (event) => {
+      if (!padEnabled) return; // Do not process key events if pad is disabled
+      const pressedKeyCode = event.key.toUpperCase();
+      playSound(pressedKeyCode);
+      setActiveDrum(pressedKeyCode);
+      setName(drumPad.find((drum) => drum.text === pressedKeyCode)?.string || '----');
+      setTimeout(() => {
+        setActiveDrum(null);
+      }, 250);
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [padEnabled]);
+
+  useEffect(() => {
+    const audioElements = document.querySelectorAll('.clip');
+    audioElements.forEach((audio) => {
+      audio.volume = volume / 100;
+    });
+  }, [volume]);
 
   function playSound(selector) {
     const audio = document.getElementById(selector);
-    audio.load();
-    audio.play();
+    if (audio) {
+      audio.currentTime = 0;
+      audio.play();
+    }
   }
 
   return (
     <div className="App d-flex justify-content-center align-items-center vh-100" id="drum-machine">
-      <div id="display">{name}</div>
-        <div className='drum-pads'>
-          {drumpad.map((drum) => (
-          <button 
-          style={{ backgroundColor: hoveredDrum === drum.src ? drum.style : '' }} 
-          key={drum.src} 
-          onClick={() => {playSound(drum.text)}} 
-          onMouseEnter={() => setHoveredDrum(drum.src)}
-          onMouseLeave={() => setHoveredDrum(null)}
-          className='drum-pad' id={drum.src}>{drum.text} 
-          <audio className="clip" id={drum.text} src={drum.src}></audio>
-          </button>))}
-        </div>   
+      <div className="grid-container">
+        <div id="display" class="justify-content-center align-items-center vstack gap-5">
+          <div id="name">{name}</div>
+          <label className='switch'>
+            {' '}
+            <input
+              type="checkbox"
+              checked={padEnabled}
+              onChange={() => setPadEnabled(!padEnabled)}
+            />
+            <span class="slider round"></span>
+          </label>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={volume}
+            onChange={(e) => setVolume(parseInt(e.target.value))}
+            style={{ width: '80%' }}
+          />
+        </div>
+        <div className="grid-item drum-pads">
+          {drumPad.map((drum) => (
+            <button
+              style={{
+                backgroundColor: hoveredDrum === drum.src || activeDrum === drum.text ? drum.style : '',
+                color: drum.style
+              }}
+              key={drum.src}
+              onClick={() => {
+                if (padEnabled) {
+                  playSound(drum.text);
+                  setName(drum.string);
+                }
+              }}
+              onMouseEnter={() => setHoveredDrum(drum.src)}
+              onMouseLeave={() => setHoveredDrum(null)}
+              className="drum-pad"
+              id={drum.src}
+              disabled={!padEnabled}
+            >
+              {drum.text}
+              <audio className="clip" id={drum.text} src={drum.src}></audio>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div id='signature'>Matthew McMeans</div>
     </div>
   );
 }
 
+
 export default App;
-
-// const handleClick = (sound) => {
-//   let audio = new Audio(sound);
-//   audio.load();
-//   audio.play();
-// }
-
-// onClick={handleClick(drum.src)}
